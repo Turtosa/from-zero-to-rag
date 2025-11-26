@@ -3,6 +3,7 @@ package main
 import "log"
 
 func main() {
+	/*
 	embeddings, err := GetEmbeddings([]string{"Test embedding", "Saturday"})
 	if err != nil {
 		log.Fatalln(err)
@@ -13,4 +14,10 @@ func main() {
 		log.Fatalln(err)
 	}
 	log.Println("Inserted embeddings")
+*/
+	rows, err := SearchVectors([]float64{0.0, 0.0}, "Saturday")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(rows)
 }
