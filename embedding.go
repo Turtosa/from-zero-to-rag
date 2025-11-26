@@ -29,6 +29,36 @@ type VectorRow struct {
 	Vector []float64 `json:"dense_column"`
 }
 
+func EmbedQuery(input string) ([]float64, error) {
+    payload := EmbeddingRequest{
+		Model: "michaelfeil/bge-small-en-v1.5",
+		Input: []string{input},
+    }
+
+    jsonData, err := json.Marshal(payload)
+    if err != nil {
+        return []float64{}, fmt.Errorf("Error marshaling JSON: %v\n", err)
+    }
+
+    resp, err := http.Post(
+		"http://localhost:7997/embeddings",
+        "application/json",
+        bytes.NewReader(jsonData),
+    )
+    if err != nil {
+        return []float64{}, fmt.Errorf("Error making request: %v\n", err)
+    }
+    defer resp.Body.Close()
+
+	var res EmbeddingResponse
+	err = json.NewDecoder(resp.Body).Decode(&res)
+    if err != nil {
+        return []float64{}, fmt.Errorf("Error making request: %v\n", err)
+    }
+
+	return res.Data[0].Embedding, err
+}
+
 func GetEmbeddings(input []string, fname string) ([]VectorRow, error) {
 	var embeddings []VectorRow
 

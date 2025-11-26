@@ -37,9 +37,14 @@ func main() {
 	for _, chunk := range chunks {
 		log.Printf("---------\n%s\n", chunk)
 	}
-	*/
 	err := ProcessDirectory("../data/aesop")
 	if err != nil {
 		log.Fatalln(err)
 	}
+	*/
+	prompt, err := GenerateLLMPrompt("What happened to the oak?")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(prompt)
 }
