@@ -22,8 +22,15 @@ type EmbeddingResponse struct {
 	Data []EmbeddingData `json:"data"`
 }
 
-func GetEmbeddings(input []string) ([][]float64, error) {
-	var embeddings [][]float64
+type VectorRow struct {
+	Name string `json:"name"`
+	Text string `json:"fulltext_column"`
+	Index int `json:"index"`
+	Vector []float64 `json:"dense_column"`
+}
+
+func GetEmbeddings(input []string) ([]VectorRow, error) {
+	var embeddings []VectorRow
 
     payload := EmbeddingRequest{
 		Model: "michaelfeil/bge-small-en-v1.5",
@@ -51,8 +58,13 @@ func GetEmbeddings(input []string) ([][]float64, error) {
         return embeddings, fmt.Errorf("Error making request: %v\n", err)
     }
 
-	for _, obj := range res.Data {
-		embeddings = append(embeddings, obj.Embedding)
+	for i, obj := range res.Data {
+		embeddings = append(embeddings, VectorRow{
+			Vector: obj.Embedding,
+			Text: input[i],
+			Name: "TODO: filename",
+			Index: 0,
+		})
 	}
 
 	return embeddings, nil

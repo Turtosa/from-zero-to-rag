@@ -7,5 +7,10 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println(embeddings)
+	log.Println("Got embeddings")
+	err = InsertEmbeddings(embeddings)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println("Inserted embeddings")
 }
