@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 )
 
 func main() {
@@ -27,7 +26,6 @@ func main() {
 		log.Fatalln(err)
 	}
 	log.Println(rows)
-	*/
 	aesop, err := os.ReadFile("../data/aesop/The Fawn and His Mother.txt")
 	if err != nil {
 		log.Fatalln(err)
@@ -38,5 +36,10 @@ func main() {
 	}
 	for _, chunk := range chunks {
 		log.Printf("---------\n%s\n", chunk)
+	}
+	*/
+	err := ProcessDirectory("../data/aesop")
+	if err != nil {
+		log.Fatalln(err)
 	}
 }

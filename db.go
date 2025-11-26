@@ -45,6 +45,7 @@ type SearchRequest struct {
 	Search []MatchRequest `json:"search"`
 }
 
+// TODO: upsert based on filename
 func InsertEmbeddings(input []VectorRow) error {
     jsonData, err := json.Marshal(input)
     if err != nil {

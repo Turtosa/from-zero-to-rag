@@ -6,7 +6,7 @@ import (
 	"github.com/neurosnap/sentences/english"
 )
 
-func ChunkTextFile(contents string) ([]string, error) {
+func ChunkText(contents string) ([]string, error) {
 	tokenizer, err := english.NewSentenceTokenizer(nil)
     if err != nil {
 		return []string{}, err

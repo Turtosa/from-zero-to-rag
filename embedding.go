@@ -29,7 +29,7 @@ type VectorRow struct {
 	Vector []float64 `json:"dense_column"`
 }
 
-func GetEmbeddings(input []string) ([]VectorRow, error) {
+func GetEmbeddings(input []string, fname string) ([]VectorRow, error) {
 	var embeddings []VectorRow
 
     payload := EmbeddingRequest{
@@ -62,8 +62,8 @@ func GetEmbeddings(input []string) ([]VectorRow, error) {
 		embeddings = append(embeddings, VectorRow{
 			Vector: obj.Embedding,
 			Text: input[i],
-			Name: "TODO: filename",
-			Index: 0,
+			Name: fname,
+			Index: i,
 		})
 	}
 
