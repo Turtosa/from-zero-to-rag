@@ -75,15 +75,26 @@ func InsertEmbeddings(input []VectorRow) error {
 
 func SearchVectors(queryVector []float64, queryText string) ([]VectorRow, error) {
 	//fm := "rrf"
-	//l2 := "l2"
-	//fl := "float"
+	l2 := "l2"
+	fl := "float"
     jsonData, err := json.Marshal(SearchRequest{
 		Search: []MatchRequest{
+			/*
 			{
 				MatchMethod: "text",
 				TopN: 2,
 				Field: "fulltext_column",
 				MatchingText: &queryText,
+				Params: &map[string]string{},
+			},
+			*/
+			{
+				MatchMethod: "dense",
+				TopN: 2,
+				Field: "dense_column",
+				QueryVector: queryVector,
+				ElementType: &fl,
+				MetricType: &l2,
 				Params: &map[string]string{},
 			},
 		},
