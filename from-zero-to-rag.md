@@ -6,9 +6,9 @@ excerpt: "Roll your own RAG! Learn about chunking, embedding, vector search, and
 tags: ["rag", "nlp", "tutorial"]
 ---
 
-In 2025, it seems nearly tech company is introducing RAG as part of their new AI-enhanced product lineup. Technobabble zingers like "hybrid semantic-lexical retrieval" or "state-of-the-art multi-modal knowledge ingestion" often plague marketing material, leading the uninitiated to assume building RAG pipelines is a difficult task best left to the wizards.
+In 2025, it seems nearly [every] tech company is introducing RAG as part of their new AI-enhanced product lineup. Technobabble zingers like "hybrid semantic-lexical retrieval" or "state-of-the-art multimodal knowledge ingestion" ~~often~~ plague marketing material, leading the uninitiated to assume [that] building RAG pipelines is a difficult task best left to the wizards.
 
-This is the first part of a series on building a RAG system from scratch (save for the embedding model itself). Part one will cover the following:
+This is the first part of a series on building a RAG system from scratch (~~save for~~ [aside from] the embedding model itself). Part one will cover the following:
 - Basic overview of RAG
 - Setting up a vector database and embedding model
 - Basic chunking of text files
@@ -23,7 +23,7 @@ RAG can be thought of as two systems, parsing and retrieval, each containing sev
 Parsing takes your soup of documents and converts it into neat vectors:
 1. \*Normalization: conversion of various documents into simple text (e.g. OCR, parsing of DOCX, PDF, PPT, MD, HTML, etc)
 2. Chunking: splitting the text into small sections such as sentences or paragraphs
-3. Embedding: generate high-dimension vectors from text chunks
+3. Embedding: generate high-~~dimension~~ dimensional vectors from text chunks
 4. Insertion: placing these vectors in a database for future querying
 
 Retrieval takes a user query and turns it into actionable context for the LLM:
@@ -34,7 +34,7 @@ Retrieval takes a user query and turns it into actionable context for the LLM:
 2. Query embedding: take the plain text queries and convert to vectors.
 3. Search: find the N most similar vectors to the user query
 4. \*Post-processing of results
-	1. \*Re rank results if multiple/alternative search algorithms were used (e.g. BM25, full text).
+	1. \*Re-rank results if multiple/alternative search algorithms were used (e.g. BM25, full text).
 	2. \*Rearrange results: LLMs tend to prefer data at the beginning and end of the context[<sup>[1]</sup>](https://arxiv.org/abs/2307.03172), so place low confidence chunks in the middle, flanked on either end by the high confidence chunks.
 	3. \*Drop anything that doesn't match our metadata filters.
 5. Prompt: Generate a new prompt combining the user's query with the context from our search.
@@ -54,7 +54,7 @@ docker pull infiniflow/infinity:nightly
 docker run -d --name infinity -v /var/infinity/:/var/infinity --ulimit nofile=500000:500000 --network=host infiniflow/infinity:nightly
 ```
 
-The bge-small-en-v1.5 model and therefor our Infinity (Embed) requires GPU acceleration, so we will need to setup nvidia-docker (and your card's NVIDIA drivers).
+~~The bge-small-en-v1.5 model and therefore our Infinity (Embed) requires GPU acceleration~~ [Because the bge-small-en-v1.5 model requires GPU acceleration, Infinity (Embed) does as well], so we will need to set up nvidia-docker (and your card's NVIDIA drivers).
 ```bash
 sudo pacman -S nvidia-container-toolkit
 sudo nvidia-ctk runtime configure --runtime=docker
@@ -146,7 +146,7 @@ There are several ways we can opt to split our data into chunks. A naive approac
 
 A slightly better approach would be to split according to paragraphs or sections (like starting a new chunk every time we run into a markdown heading or a double newline). However, this can cause issues when paragraphs are not used, or are unable to be identified in some documents (some chunks will be absolutely massive while others are paragraph sized).
 
-For this project, I've opted to use sentence-based chunking. For determining sentence boundaries, the first thought that comes to mind is just to split on common delimiters like period, semi-colon, colon, and em-dash. Unfortunately though, there are other use-cases for these characters in the English language (e.g. "e.g."); "e" and "g" are not sentences, so we need a way to filter these out. Thankfully there exists an abundance of NLP tools to help us with sentence tokenization.
+For this project, I've opted to use sentence-based chunking. For determining sentence boundaries, the first thought that comes to mind is just to split on common delimiters like periods, semi-colons, colons, and em-dashes. Unfortunately though, there are other use-cases for these characters in the English language (e.g. "e.g."); "e" and "g" are not sentences, so we need a way to filter these out. Thankfully there exists an abundance of NLP tools to help us with sentence tokenization.
 
 Here's the first iteration of our chunking function, using neurosnap's [Sentences](https://github.com/neurosnap/sentences) module.
 ```go
