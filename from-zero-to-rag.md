@@ -6,9 +6,9 @@ excerpt: "Roll your own RAG! Learn about chunking, embedding, vector search, and
 tags: ["rag", "nlp", "tutorial"]
 ---
 
-In 2025, it seems nearly [every] tech company is introducing RAG as part of their new AI-enhanced product lineup. Technobabble zingers like "hybrid semantic-lexical retrieval" or "state-of-the-art multimodal knowledge ingestion" ~~often~~ plague marketing material, leading the uninitiated to assume [that] building RAG pipelines is a difficult task best left to the wizards.
+In 2025, it seems nearly every tech company is introducing RAG as part of their new AI-enhanced product lineup. Technobabble zingers like "hybrid semantic-lexical retrieval" or "state-of-the-art multi-modal knowledge ingestion" often plague marketing material, leading the uninitiated to assume that building RAG pipelines is a difficult task best left to the wizards.
 
-This is the first part of a series on building a RAG system from scratch (~~save for~~ [aside from] the embedding model itself). Part one will cover the following:
+This is the first part of a series on building a RAG system from scratch (aside from the embedding model itself). Part one will cover the following:
 - Basic overview of RAG
 - Setting up a vector database and embedding model
 - Basic chunking of text files
@@ -20,10 +20,10 @@ Full code is available in the [From Zero to RAG repo](https://github.com/Turtosa
 ## Overview
 RAG can be thought of as two systems, parsing and retrieval, each containing several steps depending on how complex your project is.
 
-Parsing takes your soup of documents and converts it into neat vectors:
+Parsing takes your soup of documents and outputs neat queryable chunks. It typically follows these steps:
 1. \*Normalization: conversion of various documents into simple text (e.g. OCR, parsing of DOCX, PDF, PPT, MD, HTML, etc)
 2. Chunking: splitting the text into small sections such as sentences or paragraphs
-3. Embedding: generate high-~~dimension~~ dimensional vectors from text chunks
+3. Embedding: generate high-dimension vectors from text chunks
 4. Insertion: placing these vectors in a database for future querying
 
 Retrieval takes a user query and turns it into actionable context for the LLM:
@@ -31,21 +31,21 @@ Retrieval takes a user query and turns it into actionable context for the LLM:
 	1. \*Decide whether or not to bypass the RAG for this request (e.g. if user asks what time of day it is, there's no point in searching the knowledge base)
 	2. \*Break up the request into sub-queries (e.g. if user query is complex and contains many possible queries, we break it into logical parts and perform search for each of these).
 	3. \*Generate metadata filters for the results (e.g. if user query is looking for data from 2023, we will only search files created in 2023).
-2. Query embedding: take the plain text queries and convert to vectors.
+2. Query embedding: take the plain text queries and convert them into vectors.
 3. Search: find the N most similar vectors to the user query
 4. \*Post-processing of results
-	1. \*Re-rank results if multiple/alternative search algorithms were used (e.g. BM25, full text).
+	1. \*Re rank results if multiple/alternative search algorithms were used (e.g. BM25, full text).
 	2. \*Rearrange results: LLMs tend to prefer data at the beginning and end of the context[<sup>[1]</sup>](https://arxiv.org/abs/2307.03172), so place low confidence chunks in the middle, flanked on either end by the high confidence chunks.
 	3. \*Drop anything that doesn't match our metadata filters.
 5. Prompt: Generate a new prompt combining the user's query with the context from our search.
 
 In this first part, we will create a very simple setup, and skip the steps marked with an asterisk above. Let's dive into it.
 ## Prerequisites
-As previously mentioned, creating an embedding model is way out-of-scope for this series: we will rely on external open source tooling for this aspect. Similarly, we will be using an existing vector database, although it is not necessary to use one at all for this simple example.
+As previously mentioned, creating an embedding model is far out-of-scope for this series: we will rely on external open source tooling for this aspect. Similarly, we will be using an existing vector database, although it is not necessary to use one at all for this simple example.
 
 After briefly comparing the most popular vector databases, I settled on [Infinity](https://github.com/infiniflow/infinity/) due to its performance and relative simplicity.  For the embedding model, we will use [bge-small-en-v1.5](https://huggingface.co/BAAI/bge-small-en-v1.5) (due to its performance on my lowly RTX 4070 mobile GPU); but you are of course free to switch this up.
 
-For future compatibility's sake, we're going to wrap this model in a server that matches the OpenAI API spec. There are several options we can pick from, but my favorite, unfortunately for you, is also named [Infinity](https://github.com/michaelfeil/infinity); so from now on, I will refer to the vector database as "Infinity (DB)" and the embedding model server as "Infinity (Embed)".
+For future compatibility's sake, we're going to wrap this model in a server that matches the OpenAI API spec. There are several existing options we can pick from, but my favorite, unfortunately for you, is also named [Infinity](https://github.com/michaelfeil/infinity); so from now on, I will refer to the vector database as "Infinity (DB)" and the embedding model server as "Infinity (Embed)".
 ### Installation
 Getting an instance of Infinity (DB) running on your local machine is as easy as pulling the docker container.
 ```bash
@@ -54,7 +54,7 @@ docker pull infiniflow/infinity:nightly
 docker run -d --name infinity -v /var/infinity/:/var/infinity --ulimit nofile=500000:500000 --network=host infiniflow/infinity:nightly
 ```
 
-~~The bge-small-en-v1.5 model and therefore our Infinity (Embed) requires GPU acceleration~~ [Because the bge-small-en-v1.5 model requires GPU acceleration, Infinity (Embed) does as well], so we will need to set up nvidia-docker (and your card's NVIDIA drivers).
+Because the bge-small-en-v1.5 model requires GPU acceleration, Infinity (Embed) does as well, so we will need to setup nvidia-docker (and your card's NVIDIA drivers if not already present).
 ```bash
 sudo pacman -S nvidia-container-toolkit
 sudo nvidia-ctk runtime configure --runtime=docker
@@ -144,9 +144,9 @@ Now that setup is done, we're ready to write some code!
 ## Chunking
 There are several ways we can opt to split our data into chunks. A naive approach would be to use a fixed string length (e.g. turn a 1000 character text file into 100 sequential chunks of 10 characters); the problem here is that we're dealing with *natural language*: we'd be splitting up a paragraph into nonsensical sentence fragments.
 
-A slightly better approach would be to split according to paragraphs or sections (like starting a new chunk every time we run into a markdown heading or a double newline). However, this can cause issues when paragraphs are not used, or are unable to be identified in some documents (some chunks will be absolutely massive while others are paragraph sized).
+A slightly better approach would be to split according to paragraphs or sections (like starting a new chunk every time we run into a markdown heading or a double newline). However, this can cause issues when paragraphs are not used, or are unable to be identified in certain documents.
 
-For this project, I've opted to use sentence-based chunking. For determining sentence boundaries, the first thought that comes to mind is just to split on common delimiters like periods, semi-colons, colons, and em-dashes. Unfortunately though, there are other use-cases for these characters in the English language (e.g. "e.g."); "e" and "g" are not sentences, so we need a way to filter these out. Thankfully there exists an abundance of NLP tools to help us with sentence tokenization.
+For this project, I've opted to use sentence-based chunking. For determining sentence boundaries, the first thought that comes to mind is just to split on common delimiters like period, semi-colon, colon, and em-dash. Unfortunately though, there are other use-cases for these characters in the English language (e.g. "e.g."); "e" and "g" are not sentences, so we need a way to filter these out. Thankfully there exists an abundance of NLP tools to help us with sentence tokenization.
 
 Here's the first iteration of our chunking function, using neurosnap's [Sentences](https://github.com/neurosnap/sentences) module.
 ```go
@@ -172,7 +172,7 @@ func ChunkText(contents string) ([]string, error) {
 }
 ```
 
-We will also want to pad the chunk with a couple surrounding sentences, in order to bolster the coherence of context embedded within each chunk.
+We will also want to pad out the chunk with a couple surrounding sentences, in order to bolster the context embedded within each chunk.
 ```go
 package main
 
@@ -218,7 +218,7 @@ type VectorRow struct {
 }
 ```
 
-Our embedding server is quite simple. It takes in a list of strings (our chunks) and spits out a list of vectors (which are represented with a list of floats).
+Our embedding server is quite simple. It takes in a list of strings (our chunks) and spits out a list of vectors (which are simply lists of floats).
 ```bash
 $ curl --request POST \
      --url http://localhost:7997/embeddings \
@@ -286,7 +286,7 @@ Our RAG process kicks off with a query from the user. We then need to embed this
 
 After embedding the user query with the same exact model and endpoint from above, we perform a search query on Infinity (DB). The search endpoint was a bit annoying, with the documentation not quite matching up with reality, and some ungraceful segfaults occurring when I failed to conform to the implied spec.
 
-Following some trial and error, I ended up with the following (which works great and is stable for now):
+Regardless, following some trial and error, I ended up with the following (which works great and is stable for now):
 ```go
 type InfinityResponse struct {
 	ErrorCode int `json:"error_code"`
@@ -326,7 +326,7 @@ type SearchRequest struct {
 }
 
 func SearchWithQueryVector(queryVector []float64) ([]VectorRow, error) {
-	l2 := "l2" // Ah Golang, why cant you have std::option?
+	l2 := "l2" // Ah, Golang
 	fl := "float"
 	return SearchVectors([]MatchRequest{
 		{
@@ -445,7 +445,7 @@ func GenerateLLMPrompt(userQuery string) (string, error) {
 }
 ```
 
-## Data
+## First Test
 We want a simple, but realistic dataset for testing our rudimentary RAG. I opted for Aesop's Fables, the full text of which has been conveniently split into 311 text files on this [repo](https://github.com/barbarabai/aesop).
 
 The last piece of our RAG pie is this function to recursively ingest all files in a directory:
@@ -479,7 +479,7 @@ func ProcessDirectory(dirname string) error {
 }
 ```
 
-Time for a quick test! Embed and insert Aesop's Fables into the database like so:
+Ok, time for a quick test! Embed and insert Aesop's Fables into the database like so:
 ```go
 err := ProcessDirectory("../data/aesop")
 if err != nil {
@@ -529,9 +529,9 @@ Based on the context provided, two different things happened to the oak in these
 The main oak that met its demise was the one in "The Oak and the Reeds" - it was destroyed by trying to resist the wind instead of yielding to it like the flexible reeds did.
 ```
 
-Not bad, eh?
+Not bad, eh? Definitely some room for improvement, though.
 
-Definitely some room for improvement, though. Stay tuned for part 2 of Zero to RAG for a dive into pre-processing techniques.
+You can access the full code in the [From Zero to RAG repo](https://github.com/Turtosa/from-zero-to-rag). Make sure to stay tuned for part 2 of Zero to RAG, where we will cover pre-processing and other optimizations.
 ## References
 1. https://arxiv.org/abs/2307.03172
 2. https://github.com/Turtosa/from-zero-to-rag
